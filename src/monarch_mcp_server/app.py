@@ -35,4 +35,13 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    # When this file is executed directly (``python src/.../app.py`` or
+    # ``python -m monarch_mcp_server.app``) it runs as the ``__main__``
+    # module, while the tools modules import and register against the
+    # canonical ``monarch_mcp_server.app`` module — a *second* instance of
+    # this file with its own ``mcp`` object. Running the local ``main()``
+    # would start a server with zero tools. Delegate to the canonical
+    # module so the server that runs is the one the tools registered on.
+    from monarch_mcp_server.app import main as _canonical_main
+
+    _canonical_main()
