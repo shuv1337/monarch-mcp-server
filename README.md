@@ -269,28 +269,35 @@ Once authenticated, use these tools directly in Claude Desktop or Claude Code:
 |------|-------------|------------|
 | `setup_authentication` | Get setup instructions | None |
 | `check_auth_status` | Check authentication status | None |
+| `debug_session_loading` | Diagnose session storage/loading issues | None |
 | `get_accounts` | Get all financial accounts | None |
 | `get_transactions` | Get transactions with filtering and reconciliation fields | `limit`, `offset`, `start_date`, `end_date`, `account_id`, `account_ids`, `category_ids`, `category_group_ids`, `tag_ids`, `search`, `wide_search`, `search_scan_limit`, `has_notes`, `is_split`, `is_recurring` |
 | `get_budgets` | Get budget information | `start_date`, `end_date` |
 | `set_budget_amount` | Set budget for a category | `amount`, `category_id`, `category_group_id`, `start_date`, `apply_to_future` |
 | `get_cashflow` | Get cashflow analysis | `start_date`, `end_date` |
+| `get_cashflow_by_month` | Get month-by-month cashflow | `start_date`, `end_date` |
 | `get_net_worth` | Get net worth history | `start_date`, `end_date`, `account_type` |
 | `get_account_balance_history` | Get account balance history | `account_id` |
+| `upload_account_balance_history` | Upload balance corrections for an account | `account_id`, `corrections`, `dry_run` |
 | `get_net_worth_by_account_type` | Get net worth by account type | `start_date`, `timeframe` |
 | `get_account_holdings` | Get investment holdings | `account_id` |
 | `create_transaction` | Create new transaction | `account_id`, `amount`, `description`, `date`, `category_id`, `merchant_name` |
 | `update_transaction` | Update existing transaction | `transaction_id`, `amount`, `description`, `category_id`, `date` |
 | `refresh_accounts` | Request account data refresh | `account_ids` (optional — defaults to all active, visible accounts) |
-| `get_categories` | List all transaction categories | None |
-| `get_category_groups` | List category groups with categories | None |
+| `get_transaction_categories` | List all transaction categories | None |
+| `get_transaction_category_groups` | List category groups with categories | None |
+| `create_transaction_category` | Create a new category | `group_id`, `transaction_category_name`, `icon`, `rollover_enabled`, `rollover_type` |
+| `update_category` | Update an existing category | `category_id`, `name`, `icon`, `group_id`, `category_type`, `exclude_from_budget`, `budget_variability`, `rollover_enabled` |
+| `get_category_details` | Get details/spending for one category | `category_id`, `month` |
 | `get_transactions_needing_review` | Get transactions needing review | `needs_review`, `days`, `uncategorized`, `no_notes` |
-| `set_transaction_category` | Set category on a transaction | `transaction_id`, `category_id`, `mark_reviewed` |
+| `categorize_transaction` | Set category on a transaction | `transaction_id`, `category_id` |
 | `update_transaction_notes` | Update notes on a transaction | `transaction_id`, `notes` |
 | `mark_transaction_reviewed` | Mark transaction as reviewed | `transaction_id` |
-| `bulk_categorize_transactions` | Categorize multiple transactions | `transaction_ids`, `category_id` |
-| `get_tags` | List all tags | None |
+| `bulk_categorize_transactions` | Categorize multiple transactions | `transaction_ids`, `category_id`, `dry_run` |
+| `get_transaction_tags` | List all tags | None |
 | `set_transaction_tags` | Set tags on a transaction | `transaction_id`, `tag_ids` |
-| `create_tag` | Create a new tag | `name`, `color` |
+| `add_transaction_tag` | Add one tag to a transaction | `transaction_id`, `tag_id` |
+| `create_transaction_tag` | Create a new tag | `name`, `color` |
 | `search_transactions` | Search transactions with filters | `search`, `category_ids`, `account_ids`, `tag_ids`, `start_date`, `end_date`, `min_amount`, `max_amount` |
 | `get_transaction_details` | Get details of a transaction | `transaction_id` |
 | `delete_transaction` | Delete a transaction | `transaction_id` |
@@ -358,7 +365,7 @@ Get my cashflow for the last 3 months using get_cashflow
 
 ### List Available Categories
 ```
-Show me all available categories using get_categories
+Show me all available categories using get_transaction_categories
 ```
 
 ### Review Uncategorized Transactions
