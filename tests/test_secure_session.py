@@ -160,7 +160,7 @@ class _StorageFakeKeyring:
 
 
 @pytest.fixture
-def storage_keyring(monkeypatch):
+def storage_keyring(monkeypatch, tmp_path):
     """Install a roundtrip-capable fake keyring and return a fresh session."""
     fake = _StorageFakeKeyring()
     module = types.ModuleType("keyring")
@@ -168,6 +168,14 @@ def storage_keyring(monkeypatch):
     module.get_password = fake.get_password
     module.delete_password = fake.delete_password
     monkeypatch.setitem(sys.modules, "keyring", module)
+
+    # Isolate the file fallback from the real home directory. load_session
+    # falls through to _load_token_file when the (fake) keyring is empty, and
+    # without this a real ~/.monarch-mcp-server/token on the host leaks into
+    # tests that assert on missing sessions.
+    token_dir = tmp_path / "session"
+    monkeypatch.setattr(ss_module, "_TOKEN_DIR", token_dir)
+    monkeypatch.setattr(ss_module, "_TOKEN_FILE", token_dir / "token")
 
     session = ss_module.SecureMonarchSession()
     # __init__ ran the probe and set _use_keyring=True via the fake.
