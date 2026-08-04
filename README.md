@@ -155,7 +155,9 @@ Long-lived sessions, supports SSO accounts, and sidesteps Cloudflare CAPTCHA gat
 5. Copy it, return to the terminal, and press Return. On macOS the script reads
    the clipboard with `pbpaste` without echoing the cookie value.
 
-Alternatively, save the header in an owner-only file and pass it directly:
+Alternatively, save the header in an owner-only file and pass it directly.
+On macOS and Linux, set mode `600`; on Windows, use a file protected by your
+user ACL:
 
 ```bash
 chmod 600 /path/to/monarch-cookie.txt

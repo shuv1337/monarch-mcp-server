@@ -3,6 +3,7 @@
 import asyncio
 import stat
 import subprocess
+import sys
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -30,6 +31,7 @@ def test_macos_clipboard_read_does_not_echo_cookie(monkeypatch, capsys):
     assert cookie not in output.err
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX mode bits are synthesized")
 def test_cookie_file_requires_owner_only_permissions(tmp_path):
     cookie_file = tmp_path / "cookie.txt"
     cookie_file.write_text("session_id=synthetic")
@@ -39,10 +41,22 @@ def test_cookie_file_requires_owner_only_permissions(tmp_path):
         login_setup._read_cookie_file(cookie_file)
 
 
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX mode bits are synthesized")
 def test_cookie_file_accepts_private_regular_file(tmp_path):
     cookie_file = tmp_path / "cookie.txt"
     cookie_file.write_text("session_id=synthetic\n")
     cookie_file.chmod(stat.S_IRUSR | stat.S_IWUSR)
+
+    assert login_setup._read_cookie_file(cookie_file) == "session_id=synthetic"
+
+
+def test_cookie_file_uses_windows_acls_instead_of_posix_mode_bits(
+    tmp_path, monkeypatch
+):
+    cookie_file = tmp_path / "cookie.txt"
+    cookie_file.write_text("session_id=synthetic")
+    cookie_file.chmod(0o644)
+    monkeypatch.setattr(login_setup.sys, "platform", "win32")
 
     assert login_setup._read_cookie_file(cookie_file) == "session_id=synthetic"
 

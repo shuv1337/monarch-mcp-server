@@ -372,6 +372,37 @@ class TestAtomicFileFallback:
         assert stat.S_IMODE(token_file.stat().st_mode) == 0o600
         assert token_file.read_text() == "synthetic-session"
 
+    def test_syncs_directory_after_atomic_replace(self, fallback_storage, monkeypatch):
+        session, token_dir, _token_file = fallback_storage
+        events = []
+        real_replace = os.replace
+
+        def replace(source, destination):
+            real_replace(source, destination)
+            events.append("replaced")
+
+        def sync_directory(path):
+            assert path == token_dir
+            events.append("directory-synced")
+
+        monkeypatch.setattr(ss_module.os, "replace", replace)
+        monkeypatch.setattr(session, "_fsync_directory", sync_directory)
+
+        session._save_token_file("synthetic-session")
+
+        assert events == ["replaced", "directory-synced"]
+
+    @pytest.mark.skipif(os.name == "nt", reason="Windows cannot open directories")
+    def test_directory_sync_uses_directory_file_descriptor(self, monkeypatch, tmp_path):
+        calls = []
+        monkeypatch.setattr(ss_module.os, "open", lambda path, flags: 123)
+        monkeypatch.setattr(ss_module.os, "fsync", lambda fd: calls.append(("fsync", fd)))
+        monkeypatch.setattr(ss_module.os, "close", lambda fd: calls.append(("close", fd)))
+
+        ss_module.SecureMonarchSession._fsync_directory(tmp_path)
+
+        assert calls == [("fsync", 123), ("close", 123)]
+
     def test_failed_atomic_replace_preserves_existing_session(
         self, fallback_storage, monkeypatch
     ):

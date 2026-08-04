@@ -71,6 +71,24 @@ class SecureMonarchSession:
 
     # -- file-based helpers --------------------------------------------------
 
+    @staticmethod
+    def _fsync_directory(path: Path) -> None:
+        """Persist a directory entry where directory file descriptors work."""
+        if os.name == "nt":
+            return
+
+        flags = os.O_RDONLY | getattr(os, "O_DIRECTORY", 0)
+        try:
+            directory_fd = os.open(path, flags)
+        except OSError:
+            return
+        try:
+            os.fsync(directory_fd)
+        except OSError:
+            pass
+        finally:
+            os.close(directory_fd)
+
     def _save_token_file(self, token: str) -> None:
         _TOKEN_DIR.mkdir(parents=True, exist_ok=True, mode=stat.S_IRWXU)
         _TOKEN_DIR.chmod(stat.S_IRWXU)  # 700 before creating the token file
@@ -85,6 +103,7 @@ class SecureMonarchSession:
                 handle.flush()
                 os.fsync(handle.fileno())
             os.replace(temporary_path, _TOKEN_FILE)
+            self._fsync_directory(_TOKEN_DIR)
         finally:
             if fd >= 0:
                 os.close(fd)
