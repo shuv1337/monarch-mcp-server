@@ -1,5 +1,7 @@
 """Tests for keyring backend detection and secure session storage."""
 
+import os
+import stat
 import sys
 import types
 from unittest.mock import MagicMock
@@ -334,3 +336,57 @@ class TestGetAuthenticatedClient:
     def test_no_session_returns_none(self, storage_keyring):
         session, _ = storage_keyring
         assert session.get_authenticated_client() is None
+
+
+@pytest.fixture
+def fallback_storage(monkeypatch, tmp_path):
+    """Create a file-fallback session isolated from the real home directory."""
+    token_dir = tmp_path / "session"
+    token_file = token_dir / "token"
+    monkeypatch.setattr(ss_module, "_TOKEN_DIR", token_dir)
+    monkeypatch.setattr(ss_module, "_TOKEN_FILE", token_file)
+
+    session = object.__new__(ss_module.SecureMonarchSession)
+    session._use_keyring = False
+    return session, token_dir, token_file
+
+
+class TestAtomicFileFallback:
+    def test_creates_private_directory_and_file_before_replace(
+        self, fallback_storage, monkeypatch
+    ):
+        session, token_dir, token_file = fallback_storage
+        real_replace = os.replace
+        modes_at_replace = []
+
+        def inspect_then_replace(source, destination):
+            modes_at_replace.append(stat.S_IMODE(os.stat(source).st_mode))
+            real_replace(source, destination)
+
+        monkeypatch.setattr(ss_module.os, "replace", inspect_then_replace)
+
+        session._save_token_file("synthetic-session")
+
+        assert modes_at_replace == [0o600]
+        assert stat.S_IMODE(token_dir.stat().st_mode) == 0o700
+        assert stat.S_IMODE(token_file.stat().st_mode) == 0o600
+        assert token_file.read_text() == "synthetic-session"
+
+    def test_failed_atomic_replace_preserves_existing_session(
+        self, fallback_storage, monkeypatch
+    ):
+        session, token_dir, token_file = fallback_storage
+        token_dir.mkdir(mode=0o700)
+        token_file.write_text("existing-session")
+        token_file.chmod(0o600)
+
+        def fail_replace(_source, _destination):
+            raise OSError("synthetic replace failure")
+
+        monkeypatch.setattr(ss_module.os, "replace", fail_replace)
+
+        with pytest.raises(OSError, match="synthetic replace failure"):
+            session._save_token_file("replacement-session")
+
+        assert token_file.read_text() == "existing-session"
+        assert list(token_dir.iterdir()) == [token_file]

@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import stat
+import tempfile
 from pathlib import Path
 from typing import Any, Dict, Optional
 from monarchmoney import MonarchMoney
@@ -71,11 +72,25 @@ class SecureMonarchSession:
     # -- file-based helpers --------------------------------------------------
 
     def _save_token_file(self, token: str) -> None:
-        _TOKEN_DIR.mkdir(parents=True, exist_ok=True)
-        # Write with owner-only permissions
-        _TOKEN_FILE.write_text(token)
-        _TOKEN_FILE.chmod(stat.S_IRUSR | stat.S_IWUSR)  # 600
-        _TOKEN_DIR.chmod(stat.S_IRWXU)  # 700
+        _TOKEN_DIR.mkdir(parents=True, exist_ok=True, mode=stat.S_IRWXU)
+        _TOKEN_DIR.chmod(stat.S_IRWXU)  # 700 before creating the token file
+
+        fd, temporary_name = tempfile.mkstemp(prefix=".token.", dir=_TOKEN_DIR)
+        temporary_path = Path(temporary_name)
+        try:
+            os.fchmod(fd, stat.S_IRUSR | stat.S_IWUSR)  # 600 before writing
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                fd = -1
+                handle.write(token)
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.replace(temporary_path, _TOKEN_FILE)
+        finally:
+            if fd >= 0:
+                os.close(fd)
+            if temporary_path.exists():
+                temporary_path.unlink()
+
         logger.info(f"✅ Token saved to {_TOKEN_FILE}")
 
     def _load_token_file(self) -> Optional[str]:

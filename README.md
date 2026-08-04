@@ -152,9 +152,19 @@ Long-lived sessions, supports SSO accounts, and sidesteps Cloudflare CAPTCHA gat
 2. Open DevTools (F12) → Network tab.
 3. Click any request whose Name starts with `graphql` (or any request to `api.monarch.com`).
 4. Scroll to Request Headers, find the `cookie:` header, and copy the full value.
-5. Paste it into the prompt.
+5. Copy it, return to the terminal, and press Return. On macOS the script reads
+   the clipboard with `pbpaste` without echoing the cookie value.
 
-The script verifies the cookies against the live API before saving them to your system keyring.
+Alternatively, save the header in an owner-only file and pass it directly:
+
+```bash
+chmod 600 /path/to/monarch-cookie.txt
+uv run python login_setup.py --cookie-file /path/to/monarch-cookie.txt
+```
+
+The script verifies the cookies against the live API before replacing the
+session in your system keyring. A failed replacement leaves the previous
+session untouched.
 
 #### Option 2: Email and password
 
@@ -247,7 +257,7 @@ Once authenticated, use these tools directly in Claude Desktop or Claude Code:
 - **One-Time Setup**: Authenticate once, use for weeks/months
 - **Email OTP Support**: Handles Monarch's email verification flow for new devices/sessions
 - **MFA Support**: Full support for two-factor authentication
-- **SSO/Google sign-in**: Use `monarch_login_with_token` to paste a session token from your browser
+- **SSO/Google sign-in**: Use the terminal cookie setup described above
 - **Session Persistence**: No need to re-authenticate frequently
 - **Secure**: Credentials never pass through Claude
 
@@ -429,15 +439,6 @@ If your session dies quickly (under a couple of hours), the most common cause is
 ### Cloudflare CAPTCHA on login
 If `login_setup.py` reports "Programmatic login is blocked by Cloudflare CAPTCHA", choose option 1 (browser cookies) instead. Email/password POSTs to Monarch's login endpoint are sometimes gated by Cloudflare for unfamiliar IPs or rapid retries; cookie-based auth bypasses that endpoint entirely.
 
-### `'Context' object has no attribute 'elicit'`
-The `monarch_login` and `monarch_login_with_token` tools require the MCP Python SDK 1.10.0 or newer (released June 2025). If your environment cached an older `mcp` install, refresh it:
-
-```bash
-uv cache clean mcp
-```
-
-Then fully quit and reopen Claude Desktop or Claude Code so it relaunches the server with a fresh resolution. As a fallback while you upgrade, run `python login_setup.py` from the repo to authenticate via the terminal.
-
 ### Common Error Messages
 - **"No valid session found"**: Run `python login_setup.py` (or `uv run python login_setup.py`) 
 - **"Monarch sent a one-time code to your email"**: Run `python login_setup.py` and complete email verification
@@ -475,6 +476,7 @@ monarch-mcp-server/
 - Email verification codes are handled only in the terminal setup script
 - Session tokens are stored in the system keyring
 - Authentication handled in secure terminal environment
+- Login and logout are not exposed as MCP tools
 
 ### Recommended: require approval for mutating tools
 
