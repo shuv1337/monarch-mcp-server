@@ -54,7 +54,11 @@ def _read_cookie_file(cookie_file: Path) -> str:
         file_stat = os.fstat(fd)
         if not stat.S_ISREG(file_stat.st_mode):
             raise ValueError("Cookie input must be a regular file.")
-        if file_stat.st_mode & (stat.S_IRWXG | stat.S_IRWXO):
+        # Windows reports synthesized POSIX mode bits that do not describe
+        # the file's ACL, so chmod-style validation is meaningful only on POSIX.
+        if sys.platform != "win32" and file_stat.st_mode & (
+            stat.S_IRWXG | stat.S_IRWXO
+        ):
             raise ValueError(
                 "Cookie file permissions are too broad; run chmod 600 on it."
             )
@@ -279,7 +283,10 @@ def _parse_args():
     parser.add_argument(
         "--cookie-file",
         type=Path,
-        help="Read the Cookie header from an owner-only regular file (chmod 600).",
+        help=(
+            "Read the Cookie header from an owner-only regular file "
+            "(chmod 600 on POSIX)."
+        ),
     )
     return parser.parse_args()
 
