@@ -23,6 +23,21 @@ def format_exception(exc: Exception) -> str:
     return type(exc).__name__
 
 
+def require_nonblank(value: str, field: str) -> None:
+    """Refuse a blank name before it reaches Monarch.
+
+    Monarch makes a merchant out of whatever string it is handed, so a blank
+    or whitespace-only name quietly creates a junk merchant record instead of
+    failing. Lives here rather than in one tool because the hole belongs to
+    the field, not the caller: transactions, merchants and rules all write
+    merchant names. Raised, not returned, since every one of those funnels
+    exceptions through json_error and a shared validator should not have to
+    know which tool called it.
+    """
+    if not value.strip():
+        raise ValueError(f"{field} must not be blank")
+
+
 def first_present(*values: Any) -> Any:
     """Return the first value that is not None and not an empty string."""
     for value in values:
@@ -100,6 +115,60 @@ def format_transaction(txn: Dict[str, Any], extended: bool = False) -> Dict[str,
         info["has_attachments"] = bool(txn.get("attachments"))
 
     return info
+
+
+def payload_errors(
+    result: Any, *payload_keys: str
+) -> Optional[Dict[str, Any]]:
+    """Return a GraphQL payload's ``errors`` object, or None if the write took.
+
+    ``gql_call`` raises on transport errors and on top level GraphQL errors,
+    but Monarch rejects a mutation by returning ``errors`` *inside* an HTTP 200
+    body. Treating "no exception" as success therefore reports refused writes
+    as completed ones, which is worse than an outright failure: the caller
+    marks the work done and moves on.
+
+    Pass the payload keys to look under, e.g. ``"updateTransaction"``. With no
+    keys, every top level payload in the response is checked.
+
+    Monarch sometimes rejects with an all null error object, which is truthy
+    but carries no information, so that is normalised to a readable message.
+    """
+    if not isinstance(result, dict):
+        return None
+
+    candidates = (
+        [result.get(key) for key in payload_keys]
+        if payload_keys
+        else list(result.values())
+    )
+
+    for payload in candidates:
+        if not isinstance(payload, dict):
+            continue
+        errors = payload.get("errors")
+        if not errors:
+            continue
+        if isinstance(errors, dict):
+            meaningful = {
+                k: v
+                for k, v in errors.items()
+                if k != "__typename" and v is not None
+            }
+            return meaningful or {"message": "Monarch rejected the request"}
+        return {"message": "Monarch rejected the request", "errors": errors}
+
+    return None
+
+
+def json_rejected(tool_name: str, errors: Dict[str, Any]) -> str:
+    """Serialize a payload level rejection as an explicit failure."""
+    logger.warning(f"{tool_name} was rejected by Monarch: {errors}")
+    return json.dumps(
+        {"success": False, "tool": tool_name, "errors": errors},
+        indent=2,
+        default=str,
+    )
 
 
 def json_success(data: Any) -> str:

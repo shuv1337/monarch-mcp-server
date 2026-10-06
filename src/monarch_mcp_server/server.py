@@ -19,12 +19,16 @@ from monarch_mcp_server.tools.auth import (  # noqa: F401
     monarch_login_with_token,
     monarch_logout,
 )
+from monarch_mcp_server.tools.identity import (  # noqa: F401
+    monarch_whoami,
+)
 from monarch_mcp_server.tools.accounts import (  # noqa: F401
     get_accounts,
     refresh_accounts,
     get_account_holdings,
     get_account_balance_history,
     upload_account_balance_history,
+    update_account,
 )
 from monarch_mcp_server.tools.transactions import (  # noqa: F401
     get_transactions,
@@ -36,6 +40,7 @@ from monarch_mcp_server.tools.transactions import (  # noqa: F401
     update_transaction_notes,
     mark_transaction_reviewed,
     bulk_categorize_transactions,
+    bulk_update_transactions,
     delete_transaction,
     get_recurring_transactions,
     get_transactions_needing_review,
@@ -56,6 +61,7 @@ from monarch_mcp_server.tools.tags import (  # noqa: F401
 )
 from monarch_mcp_server.tools.rules import (  # noqa: F401
     get_transaction_rules,
+    reorder_transaction_rule,
     create_transaction_rule,
     update_transaction_rule,
     delete_transaction_rule,
@@ -77,10 +83,26 @@ from monarch_mcp_server.tools.financial import (  # noqa: F401
     get_net_worth,
     get_net_worth_by_account_type,
 )
+from monarch_mcp_server.tools.sync_health import (  # noqa: F401
+    get_account_sync_health,
+)
+from monarch_mcp_server.tools.debt import (  # noqa: F401
+    get_debt_paydown,
+)
+from monarch_mcp_server.tools.goals import (  # noqa: F401
+    get_goals,
+    update_savings_goal,
+    get_goal_contributions,
+    set_goal_contribution,
+)
 from monarch_mcp_server.tools.merchants import (  # noqa: F401
     get_merchant,
     update_merchant,
     review_recurring_stream,
+)
+from monarch_mcp_server.tools.business import (  # noqa: F401
+    get_business_entities,
+    set_business_entity,
 )
 
 if __name__ == "__main__":
